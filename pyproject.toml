@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "sqlton"
+version = "0.1.4"
+description = "Parse SQL statement into straight forward Syntax Tree."
+authors = ["Charles Bajeux <charles.bajeux@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+sly = "^0.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+test = "tests.main:all"
