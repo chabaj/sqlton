@@ -32,13 +32,18 @@ class Replace(Statement):
 class Update(Statement):
     pass
 
+
+class Delete(Statement):
+    pass
+
+
 class SelectCore(__Container):
     pass
 
 
-With = namedtuple('With', ('cte',))
+With = namedtuple('With', ('ctes',))
 
-CommonTableExpression = namedtuple('CommonTableExpression', ('name', 'materialized', 'select'))
+CommonTableExpression = namedtuple('CommonTableExpression', ('name', 'columns', 'materialized', 'select'))
     
 Table = namedtuple('Table', ('name', 'schema_name'), defaults=(None,))
 
