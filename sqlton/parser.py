@@ -39,7 +39,7 @@ class Lexer(_Lexer):
               ON, NATURAL, INNER, JOIN, LEFT, RIGHT,
               WHERE, GROUP, BY, HAVING,
               AND, OR, 
-              IN,
+              IN, IS,
               LIKE,
               GLOB,
               REGEXP,
@@ -61,7 +61,8 @@ class Lexer(_Lexer):
               DOUB,
               FLOA,
               REAL,
-              TEXT}
+              TEXT,
+              DECIMAL}
 
     CURRENT_TIMESTAMP = insensitive("CURRENT_TIMESTAMP")
     CURRENT_DATE = insensitive("CURRENT_DATE")
@@ -78,6 +79,7 @@ class Lexer(_Lexer):
     COLLATE = insensitive("COLLATE")
     DEFAULT = insensitive("DEFAULT")
     INDEXED = insensitive("INDEXED")
+    DECIMAL = insensitive("DECIMAL")
     REPLACE = insensitive("REPLACE")
     NATURAL = insensitive("NATURAL")
     DELETE = insensitive("DELETE")
@@ -151,6 +153,7 @@ class Lexer(_Lexer):
     ON = insensitive("ON")
     OR = insensitive("OR")
     IN = insensitive("IN")
+    IS = insensitive("IS")
     
     IDENTIFIER = r'[a-zA-Z_]\w*'
 
@@ -586,7 +589,8 @@ class Parser(_Parser):
     def group(self, p):
         return p.expr_list
 
-    @_('HAVING expr_boolean')
+    @_(*product(('HAVING',),
+                ('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call')))
     def having(self, p):
         return p.expr_boolean
 
@@ -715,36 +719,48 @@ class Parser(_Parser):
                          p[0],
                          p[-1])
     
-    @_(*product(('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call'),
+    @_(*product(('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null',
+                 'column', 'call'),
                 ('EQUAL', 'DIFFERENCE'),
-                ('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call')))
+                ('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null',
+                 'column', 'call')))
     def expr_boolean(self, p):
         return self.expr_binary(p)
 
-    @_(*product(('expr_numeric', 'column'),
+    @_(*product(('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null',
+                 'column', 'call'),
+                ('IS',),
+                ('NOT', None),
+                ('NULL_LITERAL',)))
+    def expr_boolean(self, p):
+        return Operation(('!=' if hasattr(p, 'NOT') else '=',),
+                         p[0],
+                         None)
+    
+    @_(*product(('expr_numeric', 'column', 'call'),
                 ('LESS_OR_EQUAL', 'MORE_OR_EQUAL',
                  'LESS', 'MORE'),
-                ('expr_numeric', 'column')))
+                ('expr_numeric', 'column', 'call')))
     def expr_boolean(self, p):
         return self.expr_binary(p)
     
-    @_(*product(('expr_string', 'column'),
+    @_(*product(('expr_string', 'column', 'call'),
                  product(('NOT', None),
                          ('LIKE', 'GLOB', 'REGEXP', 'MATCH')),
-                ('expr_string', 'column')))
+                ('expr_string', 'column', 'call')))
     def expr_boolean(self, p):
         return self.expr_binary(p)
 
 
-    @_(*product(('expr_boolean', 'column'),
+    @_(*product(('expr_boolean', 'column', 'call'),
                 ('AND', 'OR'),
-                ('expr_boolean', 'column')))
+                ('expr_boolean', 'column', 'call')))
     def expr_boolean(self, p):
         return self.expr_binary(p)
     
-    @_(*product(('expr_numeric', 'column'),
+    @_(*product(('expr_numeric', 'column', 'call'),
                 ('MULTIPLICATION', 'DIVISION', 'PLUS', 'MINUS'),
-                ('expr_numeric', 'column')))
+                ('expr_numeric', 'column', 'call')))
     def expr_numeric(self, p):
         return self.expr_binary(p)
 
@@ -812,7 +828,7 @@ class Parser(_Parser):
     def call(self, p):
         return p[1]
 
-    def cast(p, kind):
+    def cast(self, p, kind):
         return Operation(('CAST',), p[2], kind)
     
     @_(*product(('CAST LP',),
@@ -821,16 +837,16 @@ class Parser(_Parser):
                 ('CHAR', 'CLOB', 'TEXT'),
                 ('RP',)))
     def expr_string(self, p):
-        return cast(p, str)
+        return self.cast(p, str)
 
     @_(*product(('CAST LP',),
                 ('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call'),
                 ('AS',),
-                ('REAL', 'FLOA', 'DOUB', 'INTEGER', 'NUMERIC'),
+                ('REAL', 'FLOA', 'DOUB', 'INTEGER', 'DECIMAL', 'NUMERIC'),
                 ('RP',)))
     def expr_numeric(self, p):
-        return cast(p,
-                    int if hasattr(p, 'INTEGER') else str)
+        return self.cast(p,
+                         int if hasattr(p, 'INTEGER') else str)
 
     @_(*product(('CAST LP',),
                 ('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call'),
@@ -838,7 +854,7 @@ class Parser(_Parser):
                 ('NULL_LITERAL',),
                 ('RP',)))
     def expr_null(self, p):
-        return cast(p[2], None)
+        return self.cast(p[2], None)
 
     @_('EXISTS LP select RP')
     def expr_boolean(self, p):
