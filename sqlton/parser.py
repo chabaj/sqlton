@@ -210,6 +210,7 @@ class Parser(_Parser):
     start = 'statement_list'
     
     precedence = (
+        ('left', SEMICOLON),
         ('left', COMMA),
         ('left', UNION),
         ('left', INTERSECT),
@@ -222,6 +223,7 @@ class Parser(_Parser):
         ('left', PLUS, MINUS),
         ('left', MULTIPLICATION, DIVISION),
         ('left', IN),
+        ('left', NOT),
         ('right', UNOT),
         ('right', UPLUS),
         ('right', UMINUS),
@@ -229,14 +231,15 @@ class Parser(_Parser):
     )
 
 
+    @_('statement_list SEMICOLON statement',
+       'statement_list SEMICOLON statement SEMICOLON')
+    def statement_list(self, p):
+        return (*p.statements, p.statement)
+    
     @_('statement')
     def statement_list(self, p):
         return (p.statement)
 
-    @_('statement SEMICOLON statement_list')
-    def statement_list(self, p):
-        return (p.statement, *p.statement_list)
-    
     @_('delete', 'insert', 'select', 'update')
     def statement(self, p):
         item = p[0]
@@ -747,7 +750,8 @@ class Parser(_Parser):
     @_(*product(('expr_string', 'column', 'call'),
                  product(('NOT', None),
                          ('LIKE', 'GLOB', 'REGEXP', 'MATCH')),
-                ('expr_string', 'column', 'call')))
+                ('expr_string', 'column', 'call'),
+                ('%prec UNOT',)))
     def expr_boolean(self, p):
         return self.expr_binary(p)
 
