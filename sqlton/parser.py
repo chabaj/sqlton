@@ -537,12 +537,12 @@ class Parser(_Parser):
     # def table(self, p):
     #     return Function(**p)
 
-    @_(*product(('LP select_core RP',),
+    @_(*product(('LP select RP',),
                 ('AS IDENTIFIER', 'IDENTIFIER', None)))
     def table(self, p):
         if hasattr(p, 'IDENTIFIER'):
-            return Alias(p.select_core, p.IDENTIFIER)
-        return p.select_core
+            return Alias(p.select, p.IDENTIFIER)
+        return p.select
 
     @_('LP table_list RP')
     def table(self, p):
@@ -675,11 +675,16 @@ class Parser(_Parser):
     def expr_null(self, p):
         return p[0]
 
-    @_('expr_string COLLATE IDENTIFIER')
+    @_(*product(('expr_string', 'call', 'column'),
+                (' COLLATE IDENTIFIER',)))
     def expr_string(self, p):
-        return Operation(('COLLATE',), p.expr_string, p.IDENTIFIER)
+        return Operation(('COLLATE',), p[0], p.IDENTIFIER)
     
-    @_('expr_numeric BETWEEN expr_numeric AND expr_numeric')
+    @_(*product(('expr_numeric', 'call', 'column'),
+                ('BETWEEN',),
+                ('expr_numeric', 'call', 'column'),
+                ('AND',),
+                ('expr_numeric', 'call', 'column')))
     def expr_boolean(self, p):
         return Operation(('AND',),
                          Operation(('MORE_OR_EQUAL',),
@@ -687,7 +692,12 @@ class Parser(_Parser):
                          Operation(('LESS_OR_EQUAL',),
                                    p[4], p[0]))
 
-    @_('expr_numeric NOT BETWEEN expr_numeric AND expr_numeric %prec UNOT')
+    @_(*product(('expr_numeric', 'call', 'column'),
+                ('NOT BETWEEN',),
+                ('expr_numeric', 'call', 'column'),
+                ('AND',),
+                ('expr_numeric', 'call', 'column'),
+                ('%prec UNOT',)))
     def expr_boolean(self, p):
         return Operation(('AND',),
                          Operation(('LESS',), p[3], p[0]),
