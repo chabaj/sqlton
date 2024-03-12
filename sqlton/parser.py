@@ -238,7 +238,7 @@ class Parser(_Parser):
     
     @_('statement')
     def statement_list(self, p):
-        return (p.statement)
+        return (p.statement,)
 
     @_('delete', 'insert', 'select', 'update')
     def statement(self, p):
@@ -549,7 +549,8 @@ class Parser(_Parser):
         return p.table_list
 
     @_(*product(('table',),
-                ('CROSS',
+                (None,
+                 'CROSS',
                  *product(('NATURAL', None),
                           ('LEFT', 'RIGHT', 'FULL',),
                           ('OUTER', None)),
