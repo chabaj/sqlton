@@ -625,8 +625,9 @@ class Parser(_Parser):
     # #     return ...
 
     @_(*product(('LIMIT',),
-                ('expr_numeric',),
-                ('OFFSET expr_numeric', 'COMMA expr_numeric')))
+                ('expr_numeric', 'call', 'column'),
+                (None, *product(('OFFSET', 'COMMA'),
+                                ('expr_numeric', 'call', 'column')))))
     def limit(self, p):
         if hasattr(p, 'OFFSET'):
             return (p[1], p[3])
