@@ -4,7 +4,7 @@ from sqlton.ast import Select, SelectCore, Table, All
 def test_select():
     query = 'select * from person'
     print(query)
-    ast = parse(query)
+    ast, = parse(query)
     
     assert isinstance(ast, Select)
     assert isinstance(ast.select_core, SelectCore)
@@ -21,7 +21,7 @@ def test_select():
 def test_select_where():
     query = 'select * from person where person.name like "A%"'
     print(query)
-    ast = parse(query)
+    ast, = parse(query)
     print(ast)
 
 
@@ -32,7 +32,7 @@ def test_select_join():
                     RIGHT JOIN home, troll
             '''
     print(query)
-    ast = parse(query)
+    ast, = parse(query)
     print(ast)
 
 
@@ -42,7 +42,7 @@ def test_select_order_by():
                ORDER BY family_name ASC NULLS LAST,
                         fist_name ASC NULLS LAST'''
     print(query)
-    ast = parse(query)
+    ast, = parse(query)
     print(ast)
 
 
@@ -50,7 +50,7 @@ def test_select_call_function_upper():
     query = '''select upper(family_name)
                from person'''
     print(query)
-    ast = parse(query)
+    ast, = parse(query)
     print(ast)
 
 
@@ -58,7 +58,7 @@ def test_select_call_function_concat():
     query = '''select upper(family_name, ',', first_name)
                from person'''
     print(query)
-    ast = parse(query)
+    ast, = parse(query)
     print(ast)
 
 def test_select_regexp():
@@ -66,10 +66,18 @@ def test_select_regexp():
                from person
                where family_name not regexp '\\w+(\\s+\\w+)+' '''
     print(query)
-    ast = parse(query)
+    ast, = parse(query)
     print(ast)
 
 
+def test_multisatement():
+    query = '''
+    select true from test;
+    select true from test;
+    '''
+    asts = parse(query)
+    print(asts)
+    
 def main():
     for key, value in globals().items():
         if key.startswith('test_'):

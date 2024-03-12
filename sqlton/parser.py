@@ -231,13 +231,17 @@ class Parser(_Parser):
     )
 
 
-    @_('statement_list SEMICOLON statement',
-       'statement_list SEMICOLON statement SEMICOLON')
+    @_('_statement_list SEMICOLON',
+       '_statement_list')
     def statement_list(self, p):
-        return (*p.statements, p.statement)
+        return p._statement_list
+        
+    @_('_statement_list SEMICOLON statement')
+    def _statement_list(self, p):
+        return (*p._statement_list, p.statement)
     
     @_('statement')
-    def statement_list(self, p):
+    def _statement_list(self, p):
         return (p.statement,)
 
     @_('delete', 'insert', 'select', 'update')
