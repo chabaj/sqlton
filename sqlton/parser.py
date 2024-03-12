@@ -155,7 +155,12 @@ class Lexer(_Lexer):
     IN = insensitive("IN")
     IS = insensitive("IS")
     
-    IDENTIFIER = r'[a-zA-Z_]\w*'
+    @_(r'([a-zA-Z_]\w*)',
+       r'(`[^`]*`)')
+    def IDENTIFIER(self, t):
+       if t.value[0] == '`' and t.value[-1] == '`':
+           t.value = t.value[1:-1]
+       return t
 
     COMMA = r','
     SEMICOLON = r';'
@@ -302,7 +307,7 @@ class Parser(_Parser):
 
     @_(*product(('IDENTIFIER DOT', None),
                 ('IDENTIFIER',),
-                ('AS IDENTIFIER', None)))
+                ('AS IDENTIFIER', 'AS STRING_LITERAL', None)))
     def insert_target(self, p):
         table = Table(p[0])
         
@@ -490,7 +495,7 @@ class Parser(_Parser):
 
     @_(*product(('IDENTIFIER DOT IDENTIFIER', 'IDENTIFIER'),
                 ('AS', None),
-                ('IDENTIFIER', None),
+                ('IDENTIFIER', 'STRING_LITERAL', None),
                 ('INDEXED BY IDENTIFIER', 'NOT INDEXED', None)
                 ))
     def table(self, p):
@@ -542,10 +547,12 @@ class Parser(_Parser):
     #     return Function(**p)
 
     @_(*product(('LP select RP',),
-                ('AS IDENTIFIER', 'IDENTIFIER', None)))
+                ('AS IDENTIFIER', 'AS STRING_LITERAL', 'IDENTIFIER', 'STRING_LITERAL', None)))
     def table(self, p):
         if hasattr(p, 'IDENTIFIER'):
             return Alias(p.select, p.IDENTIFIER)
+        if hasattr(p, 'STRING_LITERAL'):
+            return Alias(p.select, p.STRING_LITERAL)
         return p.select
 
     @_('LP table_list RP')

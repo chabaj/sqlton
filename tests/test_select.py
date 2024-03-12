@@ -62,7 +62,7 @@ def test_select_call_function_concat():
     print(ast)
 
 def test_select_regexp():
-    query = '''select person.family_name, person.first_name
+    query = '''select person.family_name as `family name`, person.first_name as "first name"
                from person
                where family_name not regexp '\\w+(\\s+\\w+)+' '''
     print(query)
