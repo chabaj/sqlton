@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sqlton"
-version = "0.1.8"
+version = "0.1.9"
 description = "Parse SQL statement into straight forward Syntax Tree."
 authors = ["Charles Bajeux <charles.bajeux@gmail.com>"]
 readme = "README.md"

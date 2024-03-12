@@ -872,8 +872,7 @@ class Parser(_Parser):
 
     @_('EXISTS LP select RP')
     def expr_boolean(self, p):
-        return Operation(('EXISTS',),
-                         p.select)
+        return Operation(('EXISTS',), None, p.select)
     
     @_('NOT expr_boolean %prec UNOT')
     def expr_boolean(self, p):
