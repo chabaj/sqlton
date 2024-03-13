@@ -647,15 +647,15 @@ class Parser(_Parser):
         else:
             return (p[1], 0)
 
-    @_(*product(('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call'),
-                ('COMMA expr_list',)))
+    @_(*product(('expr_list COMMA',),
+                ('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call')))
     def expr_list(self, p):
-        return (p[0], *p.expr_list)
+        return (*p.expr_list, p[0])
 
     @_('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call')
     def expr_list(self, p):
         return (p[0],)
-    
+
     @_('LP expr_boolean RP')
     def expr_boolean(self, p):
         return p[1]
@@ -730,14 +730,20 @@ class Parser(_Parser):
 
     @_(*product(('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call'),
                 (None, 'NOT'),
-                ('IN LP expr_list RP',)))
+                ('IN LP',),
+                ('expr_list', ''),
+                ('RP',)))
     def expr_boolean(self, p):
         if hasattr(p, 'NOT'):
             operator = ('NOT', 'IN')
         else:
             operator = ('IN',)
         
-        return Operation(operator, p[0], p.expr_list)
+        return Operation(operator,
+                         p[0],
+                         p.expr_list
+                         if hasattr(p, 'expr_list')
+                         else ())
 
     def expr_binary(self, p):
         return Operation(tuple(p[index].upper()

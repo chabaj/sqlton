@@ -77,6 +77,11 @@ def test_multisatement():
     '''
     asts = parse(query)
     print(asts)
+
+def test_in_empty_list():
+    query = 'select true from table where true in ()'
+    ast, = parse(query)
+    print(ast)
     
 def main():
     for key, value in globals().items():
