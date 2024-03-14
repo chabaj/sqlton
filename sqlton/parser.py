@@ -355,9 +355,9 @@ class Parser(_Parser):
     def assignment_list(self, p):
         return (p.assignment,)
         
-    @_('assignment COMMA assignment_list')
+    @_('assignment_list COMMA assignment')
     def assignment_list(self, p):
-        return (p.assignment, *p.assignment_list)
+        return (*p.assignment_list, p.assignment)
     
     @_(*product(('LP column_name_list RP EQUAL',),
                 ('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call')))
@@ -385,9 +385,9 @@ class Parser(_Parser):
     def cte_list(self, p):
         return (p.cte,)
 
-    @_('cte COMMA cte_list')
+    @_('cte_list COMMA cte')
     def cte_list(self, p):
-        return (p.cte, *p.cte_list)
+        return (*p.cte_list, p.cte)
     
     @_(*product(('IDENTIFIER',),
                 ('LP column_name_list RP', None),
@@ -406,9 +406,9 @@ class Parser(_Parser):
     def column_name_list(self, p):
         return (p.IDENTIFIER,)
 
-    @_('IDENTIFIER COMMA column_name_list')
+    @_('column_name_list COMMA IDENTIFIER')
     def column_name_list(self, p):
-        return (p.IDENTIFIER, *p.column_name_list)
+        return (*p.column_name_list, p.IDENTIFIER)
 
     @_(*product(('SELECT reduction result_column_list',),
                 (None, 'FROM table_list',),
@@ -431,9 +431,9 @@ class Parser(_Parser):
     def row_list(self, p):
         return (p.expr_list,)
 
-    @_('LP expr_list RP COMMA row_list')
+    @_('row_list COMMA LP expr_list RP')
     def row_list(self, p):
-        return (p.expr_list, *p.row_list)
+        return (*p.row_list, p.expr_list)
     
 
     @_(*product(('select',),
@@ -456,9 +456,9 @@ class Parser(_Parser):
     def result_column_list(self, p):
         return (p[0],)
 
-    @_('result_column COMMA result_column_list')
+    @_('result_column_list COMMA result_column')
     def result_column_list(self, p):
-        return (p.result_column, *p.result_column_list)
+        return (*p.result_column_list, p.result_column)
 
     @_('IDENTIFIER DOT IDENTIFIER DOT MULTIPLICATION')
     def result_column(self, p):
@@ -486,9 +486,9 @@ class Parser(_Parser):
     def table_list(self, p):
         return (p.table,)
 
-    @_('table COMMA table_list')
+    @_('table_list COMMA table')
     def table_list(self, p):
-        return (p.table, *p.table_list)
+        return (*p.table_list, p.table)
 
     @_(*product(('IDENTIFIER DOT IDENTIFIER', 'IDENTIFIER'),
                 ('AS', None),
@@ -647,7 +647,7 @@ class Parser(_Parser):
     @_(*product(('expr_list COMMA',),
                 ('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call')))
     def expr_list(self, p):
-        return (*p.expr_list, p[0])
+        return (*p.expr_list, p[2])
 
     @_('expr_boolean', 'expr_numeric', 'expr_string', 'expr_null', 'column', 'call')
     def expr_list(self, p):
