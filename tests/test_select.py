@@ -83,6 +83,11 @@ def test_in_empty_list():
     ast, = parse(query)
     print(ast)
     
+def test_no_from():
+    query = 'select true as lol'
+    ast, = parse(query)
+    print(ast)
+
 def main():
     for key, value in globals().items():
         if key.startswith('test_'):

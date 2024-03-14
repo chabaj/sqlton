@@ -410,11 +410,8 @@ class Parser(_Parser):
     def column_name_list(self, p):
         return (p.IDENTIFIER, *p.column_name_list)
 
-    @_(*product(('SELECT',),
-                ('reduction',),
-                ('result_column_list',),
-                ('FROM',),
-                ('table_list',),
+    @_(*product(('SELECT reduction result_column_list',),
+                (None, 'FROM table_list',),
                 (None, 'where'),
                 (None, 'group'),
                 (None, 'having'),
