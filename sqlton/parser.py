@@ -3,7 +3,7 @@ from re import match
 from itertools import product as _product
 from functools import partial
 from sly import Lexer as _Lexer, Parser as _Parser
-from sqlton.ast import With, Select, SelectCore, Delete, Insert, Replace, Update, Operation, Table, Index, All, Column, Alias, Values, CommonTableExpression
+from sqlton.ast import With, Create, Drop, Select, SelectCore, Delete, Insert, Replace, Update, Operation, Table, Index, All, Column, Alias, Values, CommonTableExpression
 
 def insensitive(word):
     return (''.join(f'({character.lower()}|{character.upper()})'
@@ -19,7 +19,9 @@ def product(*variations):
 decimal_number = r'((?P<mantis>([\+-]?\d+(\.\d+)?)|(\.\d+))((e|E)(?P<exponent>[\+-]?\d+))?)'
 
 class Lexer(_Lexer):
-    tokens = {RETURNING, IDENTIFIER, COMMA, SEMICOLON, LP, RP, DOT,
+    tokens = {CONSTRAINT, CONFLICT, TABLE,
+              PRIMARY, KEY, AUTOINCREMENT,
+              RETURNING, IDENTIFIER, COMMA, SEMICOLON, LP, RP, DOT,
               EQUAL, DIFFERENCE,
               LESS_OR_EQUAL, MORE_OR_EQUAL,
               LESS, MORE,
@@ -32,7 +34,7 @@ class Lexer(_Lexer):
               CURRENT_DATE,
               CURRENT_TIMESTAMP,
               WITH, AS, RECURSIVE, NOT, MATERIALIZED,
-              SELECT, VALUES, INSERT, REPLACE, UPDATE, DELETE, SET,
+              CREATE, DROP, SELECT, VALUES, INSERT, REPLACE, UPDATE, DELETE, SET,
               DISTINCT, ALL,
               UNION, EXCEPT, INTERSECT,
               FROM, INTO,
@@ -49,6 +51,7 @@ class Lexer(_Lexer):
               INDEXED,
               FILTER,
               CAST,
+              IF,
               ORDER, ASC, DESC, COLLATE, NULLS, FIRST, LAST,
               LIMIT, OFFSET, FULL, OUTER, CROSS,
               USING,
@@ -65,17 +68,21 @@ class Lexer(_Lexer):
               DECIMAL}
 
     CURRENT_TIMESTAMP = insensitive("CURRENT_TIMESTAMP")
+    AUTOINCREMENT = insensitive("AUTOINCREMENT")
     CURRENT_DATE = insensitive("CURRENT_DATE")
     CURRENT_TIME = insensitive("CURRENT_TIME")
     MATERIALIZED = insensitive("MATERIALIZED")
+    CONSTRAINT = insensitive("CONSTRAINT")
     RETURNING = insensitive("RETURNING")
     INTERSECT = insensitive("INTERSECT")
     RECURSIVE = insensitive("RECURSIVE")
+    CONFLICT = insensitive("CONFLICT")
     DISTINCT = insensitive("DISTINCT")
     ROLLBACK = insensitive("ROLLBACK")
     INTEGER = insensitive("INTEGER")
     NUMERIC = insensitive("NUMERIC")
     BETWEEN = insensitive("BETWEEN")
+    PRIMARY = insensitive("PRIMARY")
     COLLATE = insensitive("COLLATE")
     DEFAULT = insensitive("DEFAULT")
     INDEXED = insensitive("INDEXED")
@@ -94,6 +101,7 @@ class Lexer(_Lexer):
     REGEXP = insensitive("REGEXP")
     FILTER = insensitive("FILTER")
     EXISTS = insensitive("EXISTS")
+    CREATE = insensitive("CREATE")
     MATCH = insensitive("MATCH")
     FIRST = insensitive("FIRST")
     ABORT = insensitive("ABORT")
@@ -107,6 +115,7 @@ class Lexer(_Lexer):
     UNION = insensitive("UNION")
     USING = insensitive("USING")
     WHERE = insensitive("WHERE")
+    TABLE = insensitive("TABLE")
 
     ignore = ' \t'
 
@@ -125,6 +134,7 @@ class Lexer(_Lexer):
         t.value = None
         return t
 
+    DROP = insensitive("DROP")
     CHAR = insensitive("CHAR")
     CLOB = insensitive("CLOB")
     DOUB = insensitive("DOUB")
@@ -148,12 +158,14 @@ class Lexer(_Lexer):
     AND = insensitive("AND")
     ASC = insensitive("ASC")
     NOT = insensitive("NOT")
+    KEY = insensitive("KEY")
     AS = insensitive("AS")
     BY = insensitive("BY")
     ON = insensitive("ON")
     OR = insensitive("OR")
     IN = insensitive("IN")
     IS = insensitive("IS")
+    IF = insensitive("IF")
     
     @_(r'([a-zA-Z_]\w*)',
        r'(`[^`]*`)')
@@ -249,7 +261,7 @@ class Parser(_Parser):
     def _statement_list(self, p):
         return (p.statement,)
 
-    @_('delete', 'insert', 'select', 'update')
+    @_('create', 'drop', 'delete', 'insert', 'select', 'update')
     def statement(self, p):
         item = p[0]
         
@@ -267,6 +279,100 @@ class Parser(_Parser):
                       for key in p._namemap.keys())
         return Select(**kwargs)
 
+
+    @_(*product(('CREATE TABLE',),
+                (None, 'IF NOT EXISTS'),
+                ('IDENTIFIER', 'IDENTIFIER DOT IDENTIFIER'),
+                ('AS select',
+                 *product(('LP column_definition_list',),
+                          #(None, 'table_constraint_list',),
+                          ('RP',)))))
+    def create(self, p):
+        return Create(table=(Table(p.IDENTIFIER1, p.IDENTIFIER0)
+                             if hasattr(p, 'DOT')
+                             else Table(p.IDENTIFIER)),
+                      select=(p.select
+                              if hasattr(p, 'select')
+                              else None),
+                      columns=(p.column_definition_list
+                               if hasattr(p, 'column_definition_list')
+                               else None),
+                      constraints=(table_constraint_list
+                                   if hasattr(p, 'table_constraint_list')
+                                   else None))
+        
+    @_('column_definition_list COMMA column_definition')
+    def column_definition_list(self, p):
+        return p.column_definition_list | dict((p.column_definition,))
+
+    @_('column_definition')
+    def column_definition_list(self, p):
+        return dict((p.column_definition,))
+    
+    @_(*product(('IDENTIFIER',),
+                ('CHAR', 'CLOB', 'TEXT',
+                 'REAL', 'FLOA', 'DOUB', 'INTEGER', 'DECIMAL', 'NUMERIC',
+                 'NULL_LITERAL', None),
+                ('column_constraint_list', None)))
+    def column_definition(self, p):
+        return (p.IDENTIFIER,
+                ((p[1]
+                  if any(True
+                         for kind in ('CHAR', 'CLOB', 'TEXT',
+                                      'REAL', 'FLOA', 'DOUB',
+                                      'INTEGER', 'DECIMAL', 'NUMERIC',
+                                      'NULL_LITERAL')
+                         if hasattr(p, kind))
+                  else None),
+                 (p.column_constraint_lista
+                  if hasattr(p, 'column_constraint_list')
+                  else ())))
+
+    @_('column_constraint_list column_constraint')
+    def column_constraint_list(self, p):
+        return (*p.column_constraint_list,
+                p.column_constraint)
+
+    @_('column_constraint')
+    def column_constraint_list(self, p):
+        return (p.column_constraint,)
+    
+    @_(*product(('CONSTRAINT IDENTIFIER', None),
+                ('primary_key_constraint',)))
+    def column_constraint(self, p):
+        if hasattr(p, 'CONSTRAINT'):
+            return (p.IDENTIFIER, p[2])
+        else:
+            return (None, p[0])
+            
+    
+    @_(*product(('PRIMARY KEY',),
+                (None, 'ASC', 'DESC'),
+                ('on_conflict',),
+                (None, 'AUTOINCREMENT',)))
+    def primary_key_constraint(self, p):
+        return {'order':{(True, False): 'ASC',
+                         (False, True): 'DESC',
+                         (False, False): None}[(hasattr(p, 'ASC'), hasattr(p, 'DESC'))],
+                'on_conflict': p.on_conflict,
+                'autoincrement': hasattr(p, 'AUTOINCREMENT')}
+
+    @_(*product((None,
+                 *product(('ON CONFLICT',),
+                          ('ROLLBACK', 'ABORT', 'FAIL', 'IGNORE', 'REPLACE')))))
+    def on_conflict(self, p):
+        if hasattr(p, 'CONFLICT'):
+            return p[-1]
+        return None
+
+    @_(*product(('DROP TABLE',),
+                (None, 'IF EXISTS'),
+                ('IDENTIFIER DOT IDENTIFIER', 'IDENTIFIER')))
+    def drop(self, p):
+        return Drop(if_exists=hasattr(p, 'EXISTS'),
+                    table=Table(p[-1],
+                                p[-3] if hasattr(p, 'DOT') else None))
+    
     # TODO: upsert close
     @_(*product(('with_clause', None),
                 ('insert_directive INTO',),

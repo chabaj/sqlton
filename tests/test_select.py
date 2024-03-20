@@ -79,7 +79,7 @@ def test_multisatement():
     print(asts)
 
 def test_in_empty_list():
-    query = 'select true from table where true in ()'
+    query = 'select true from t where true in ()'
     ast, = parse(query)
     print(ast)
     

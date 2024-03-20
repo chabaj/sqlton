@@ -9,6 +9,7 @@ def execute_tests(module):
             print('')
 
 def all():
+    execute_tests('tests.test_create_drop')
     execute_tests('tests.test_insert')
     execute_tests('tests.test_select')
     execute_tests('tests.test_expression')

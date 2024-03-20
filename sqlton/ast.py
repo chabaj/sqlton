@@ -17,6 +17,14 @@ class Statement(__Container):
     pass
 
 
+class Create(Statement):
+    pass
+
+
+class Drop(Statement):
+    pass
+
+
 class Select(Statement):
     pass
 
